@@ -1,0 +1,71 @@
+# Teste les deux services puis publie les 3 images sur Docker Hub a chaque push sur main.
+# Secrets a creer dans GitHub (Settings > Secrets and variables > Actions) :
+#   DOCKERHUB_USERNAME  votre identifiant Docker Hub
+#   DOCKERHUB_TOKEN     un "Personal access token" Docker Hub (Read & Write)
+name: build-and-publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [car-rental, customer-service]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Tests ${{ matrix.service }}
+        working-directory: ${{ matrix.service }}
+        run: ./mvnw -B verify
+
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      USER: ${{ secrets.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Image ubuntu-java
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/ubuntu-java
+          push: true
+          tags: |
+            ${{ env.USER }}/ubuntu-java:latest
+            ${{ env.USER }}/ubuntu-java:${{ github.sha }}
+
+      - name: Image car-rental
+        uses: docker/build-push-action@v6
+        with:
+          context: car-rental
+          push: true
+          build-args: BASE_IMAGE=${{ env.USER }}/ubuntu-java:${{ github.sha }}
+          tags: |
+            ${{ env.USER }}/car-rental:latest
+            ${{ env.USER }}/car-rental:${{ github.sha }}
+
+      - name: Image customer-service
+        uses: docker/build-push-action@v6
+        with:
+          context: customer-service
+          push: true
+          build-args: BASE_IMAGE=${{ env.USER }}/ubuntu-java:${{ github.sha }}
+          tags: |
+            ${{ env.USER }}/customer-service:latest
+            ${{ env.USER }}/customer-service:${{ github.sha }}

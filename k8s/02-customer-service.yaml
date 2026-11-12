@@ -1,0 +1,58 @@
+# Etape 14/20 : deuxieme service, appele par car-rental
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: customer-service
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service
+  labels:
+    app: customer-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-service
+  template:
+    metadata:
+      labels:
+        app: customer-service
+        version: v1
+    spec:
+      serviceAccountName: customer-service
+      containers:
+        - name: customer-service
+          image: customer-service   # remplace par kustomization.yaml
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-service
+spec:
+  type: ClusterIP
+  selector:
+    app: customer-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

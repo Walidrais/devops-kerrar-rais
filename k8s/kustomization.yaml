@@ -1,0 +1,17 @@
+# Deploiement complet : kubectl apply -k k8s/
+# >>> Remplacez VOTRE_USER_DOCKERHUB par votre identifiant Docker Hub (2 lignes) <<<
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 01-mysql.yaml
+  - 02-customer-service.yaml
+  - 03-car-rental.yaml
+  - 04-ingress.yaml
+  - 05-rbac.yaml
+images:
+  - name: car-rental
+    newName: VOTRE_USER_DOCKERHUB/car-rental
+    newTag: latest
+  - name: customer-service
+    newName: VOTRE_USER_DOCKERHUB/customer-service
+    newTag: latest

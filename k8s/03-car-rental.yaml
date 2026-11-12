@@ -1,0 +1,71 @@
+# Etape 10/20 : deploiement + service du premier service (car-rental)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: car-rental
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: car-rental
+  labels:
+    app: car-rental
+spec:
+  replicas: 1   # ensuite : kubectl scale deployment car-rental --replicas=3
+  selector:
+    matchLabels:
+      app: car-rental
+  template:
+    metadata:
+      labels:
+        app: car-rental
+        version: v1
+    spec:
+      serviceAccountName: car-rental
+      initContainers:
+        # attend que MySQL accepte les connexions avant de demarrer Spring
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z mysql 3306; do echo 'attente de mysql...'; sleep 3; done"]
+      containers:
+        - name: car-rental
+          image: car-rental   # remplace par kustomization.yaml
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CUSTOMER_SERVICE_URL
+              value: http://customer-service:8080
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/rental
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef: { name: mysql-secret, key: MYSQL_USER }
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: mysql-secret, key: MYSQL_PASSWORD }
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: car-rental
+spec:
+  type: NodePort   # accessible avec "minikube service car-rental"
+  selector:
+    app: car-rental
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
