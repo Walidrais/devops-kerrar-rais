@@ -84,7 +84,7 @@ docker run -p 8080:8080 car-rental
 
 ## 3. Déployer sur minikube
 
-Dans `k8s/kustomization.yaml`, remplacez `VOTRE_USER_DOCKERHUB` par votre identifiant Docker Hub (2 lignes). Ensuite :
+Les images utilisées sont celles de Docker Hub (`walidraiis/car-rental` et `walidraiis/customer-service`) :
 
 ```bash
 minikube start --memory=4096

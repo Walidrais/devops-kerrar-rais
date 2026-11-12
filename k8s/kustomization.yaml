@@ -1,5 +1,5 @@
 # Deploiement complet : kubectl apply -k k8s/
-# >>> Remplacez VOTRE_USER_DOCKERHUB par votre identifiant Docker Hub (2 lignes) <<<
+# Images publiees sur Docker Hub par le workflow GitHub Actions
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -10,8 +10,8 @@ resources:
   - 05-rbac.yaml
 images:
   - name: car-rental
-    newName: VOTRE_USER_DOCKERHUB/car-rental
+    newName: walidraiis/car-rental
     newTag: latest
   - name: customer-service
-    newName: VOTRE_USER_DOCKERHUB/customer-service
+    newName: walidraiis/customer-service
     newTag: latest
